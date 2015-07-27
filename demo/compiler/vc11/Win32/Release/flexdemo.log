@@ -1,0 +1,45 @@
+﻿生成启动时间为 2015/7/28 0:34:32。
+     1>项目“D:\develop\codes\VS2013\flex_working\cloth-water\demo\compiler\vc11\flexdemo.vcxproj”在节点 2 上(Build 个目标)。
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I..\..\.. /I..\..\..\include /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.0/include" /Zi /nologo /W3 /WX- /Ox /Oi /Oy- /GL /D _HAS_EXCEPTIONS=0 /D _CRT_SECURE_NO_WARNINGS /D WIN32 /D NDEBUG /D _CONSOLE /D _MBCS /Gm- /EHsc /MT /GS- /Gy /arch:SSE2 /fp:fast /Zc:wchar_t /Zc:forScope /Fo"Win32\Release\\" /Fd"Win32\Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt ..\..\..\core\aabbtree.cpp ..\..\..\core\core.cpp ..\..\..\core\maths.cpp ..\..\..\core\mesh.cpp ..\..\..\core\perlin.cpp ..\..\..\core\pfm.cpp ..\..\..\core\platform.cpp ..\..\..\core\sdf.cpp ..\..\..\core\shader.cpp ..\..\..\core\tga.cpp ..\..\..\core\voxelize.cpp ..\..\imgui.cpp ..\..\imguiRenderGL.cpp ..\..\main.cpp ..\..\shaders.cpp
+         aabbtree.cpp
+         core.cpp
+         maths.cpp
+         mesh.cpp
+         perlin.cpp
+         pfm.cpp
+         platform.cpp
+         sdf.cpp
+     1>..\..\..\core\sdf.cpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+         shader.cpp
+         tga.cpp
+         voxelize.cpp
+         imgui.cpp
+         imguiRenderGL.cpp
+         main.cpp
+         shaders.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\..\bin\Win32\flexDemoRelease.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:..\..\..\lib\Win32 /LIBPATH:..\..\..\external\freeglut\lib /LIBPATH:..\..\..\external\glew\lib\win32 /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.0\lib\win32" flexRelease_x86.lib cuda.lib cudart.lib glew32.lib freeglut.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"..\..\..\bin\Win32\flexDemoRelease.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\..\bin\Win32\flexDemoRelease.lib" /MACHINE:X86 /SAFESEH Win32\Release\aabbtree.obj
+         Win32\Release\core.obj
+         Win32\Release\maths.obj
+         Win32\Release\mesh.obj
+         Win32\Release\perlin.obj
+         Win32\Release\pfm.obj
+         Win32\Release\platform.obj
+         Win32\Release\sdf.obj
+         Win32\Release\shader.obj
+         Win32\Release\tga.obj
+         Win32\Release\voxelize.obj
+         Win32\Release\imgui.obj
+         Win32\Release\imguiRenderGL.obj
+         Win32\Release\main.obj
+         Win32\Release\shaders.obj
+            正在创建库 ..\..\..\bin\Win32\flexDemoRelease.lib 和对象 ..\..\..\bin\Win32\flexDemoRelease.exp
+         正在生成代码
+         已完成代码的生成
+         flexdemo.vcxproj -> D:\develop\codes\VS2013\flex_working\cloth-water\demo\compiler\vc11\..\..\..\bin\Win32\flexDemoRelease.exe
+     1>已完成生成项目“D:\develop\codes\VS2013\flex_working\cloth-water\demo\compiler\vc11\flexdemo.vcxproj”(Build 个目标)的操作。
+
+生成成功。
+
+已用时间 00:00:08.61

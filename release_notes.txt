@@ -1,0 +1,96 @@
+
+0.8
+----
+
+- Upgrade to CUDA 7.0
+- Linux binaries are now compiled with -fPIC
+- Fix for extensions library not writing velocities correctly
+- Fix for memory leak when using moving convex shapes
+- Optimizations for inflatable constraints to reduce number of kernel launches
+- Added option to control the max number of neighbors stored per-particle, this can reduce memory usage, see flexCreateSolver()
+
+0.25
+----
+
+- Fix for vertex normal calculation when using sparse active particle set
+- Fix for division by zero in rest density calculation when fluid rest distance was 0.0
+- Fix for infinite mass particles being moved by kinematic objects
+- Added CUDA force fields to extensions library, see flexExtSetForceFields()
+- Added particle contact reporting API, see flexGetContacts()
+- Added early out to avoid Laplacian smoothing and anisotropy calculation if not using them
+- Added global damping parameter to model viscous drag on particles (not just cloth), see FlexParams::mDamping
+- Added user manual in pdf and chm formats
+- Made enum names consistent, eFlexHost -> eFlexMemoryHost
+- Upgraded to CUB 1.3.2
+- Extended particle phase parameters to allow fine grained control over self-collision and fluid properties, see flexMakePhase()
+
+0.23
+----
+
+- Switched to bindless textures, 50% reduction in CPU usage, because of this change Flex now requires an SM3.0 or above GPU
+- Optimized convex grid rasterization by assigning 4 warps/shape, reduces time from 1ms->0.25ms for large shapes
+- Added error mesasge callback, see flexInit()
+- Added flexSetFence()/flexWaitFence() for more fine grained synchronization with Flex GPU work, flexSynchronize() has been removed
+- Added static/dynamic flags for convex shapes to allow prioritising static contacts over dynamic, can be useful to prevent tunnelling through thin shapes
+- Added local/global relaxation to improve convergence for some scenes (see FlexParams::eRelaxationMode)
+- Removed flexGetVorticities(), allows optimizations for vorticity confinement calculation
+- Fix for flexSetSprings(), flexSetTriangles(), and flexSetConvexes() reallocing more often than necessary
+- Fix for flexGetDensities(), and flexGetAnisotropy() not returning the full particle array if using sparse active set
+- Fix for memory leak when instance creation fails in flexExtCreateInstance()
+- Fix for memory leak when setting rigid bodies multiple times
+- Fix for potential GPU crash when using plastic deformation on rigid bodies
+- Smooth vertex normals are now computed for particles belonging to dynamic triangles (cloth), they can be retrieved via flexGetNormals()
+- Optimized CompactObjects in flexExtPushToDevice()
+- Made headers compile with /W4 on MSVC
+- Added debug capture functionality
+
+0.22
+----
+
+- Fix for infinite mass particles gaining velocity during collisions
+- Fix bug with planar triangle mesh rasterization
+- Fix for zero-length distance constraints
+- Fix cloth drag and lift causing instability at high velocities
+- Fix for convex grid perf. when there is a single large convex body
+- Improved behaviour when particles are overconstrained (constraint averaging), can reduce jitter for pinned cloth
+- Improved adhesion behaviour for fluids against solids
+- Improved restitution behavior
+- Improved fluid rendering performance by using a smaller bilateral filter kernel
+- Change particle friction to be an absolute parameter instead of a multiplier on dynamic friction
+- Change sort to use async device-device memcpys to avoid stalling host
+- Exposed new parameter to control collision margin against shapes see FlexParams::mShapeCollisionMargin 
+- Warning fixes for Linux and Windows
+- Fix z-precision rendering issues in demo
+- Added "Ext" prefix to extensions types
+- Clamp particle velocity to maximum user velocity before prediction step, improves behaviour when interacting with force fields
+
+0.21
+----
+
+- Add support for lower dimensional particle rigid bodies (rods, planes)
+- Allow specifying rigid rotations through the solver API
+- Allow separate control of fluid and solid rest distances
+- Add GUI to demo
+
+0.2
+---
+
+- Fix for rest density calculation when number of neighbors > than max
+- Add support for async memory copies back to pinned host memory
+- Add functions to allocate pinned host memory, see flexAlloc()
+- Add rigid body support to FlexExtensions
+- Add rigid body SDF collision support
+- Add position level friction
+- Static triangle grid now created on the GPU, see flexSetTriangles
+- Unify triangle collision with rest of the pipline
+- Exposed a new parameter to run a second collision pass against triangle meshes, see FlexParam::mEnableCCD
+- Optimized rigid body solve using CUB parallel reductions
+- Fix for solve springs when some particles have infinite mass
+- Reduce allocations in flexSetConvexes
+- Fix plastic deformation for rigids
+- Switch to /MT for FlexExtensions library
+
+0.1
+---
+
+Initial release

@@ -1,0 +1,26 @@
+SHELL = /bin/sh
+CC = g++
+AR = ar
+
+CFG = release 
+
+CUDA = /usr/local/cuda-7.0
+NVCC = $(CUDA)/bin/nvcc 
+CUDA_INC = $(CUDA)/include
+CUDA_LIB = $(CUDA)/lib64
+
+CORE = $(ROOT)/core
+SRC = $(ROOT)/src
+LIB = $(ROOT)/lib/linux64
+DEMO = $(ROOT)/demo
+EXT = $(ROOT)/extensions
+INCLUDE = $(ROOT)/include
+EXTERNAL = $(ROOT)/external
+BIN = $(ROOT)/bin/linux32
+CUB = $(EXTERNAL)/cub-1.3.2	
+
+CFLAGS.release = -g -Wall -I$(CUDA_INC) -I$(ROOT) -I$(INCLUDE) -O3 -fPIC -ffast-math -fpermissive -fno-strict-aliasing
+CFLAGS.debug = -g -Wall -I$(CUDA_INC) -I$(ROOT) -I$(INCLUDE) -O0 -fPIC -fpermissive -fno-strict-aliasing
+CFLAGS = $(CFLAGS.$(CFG))
+
+CUFLAGS = -g -arch=sm_30 -m64 -Xcompiler -fPIC
