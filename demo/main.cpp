@@ -93,6 +93,12 @@ vector<int> g_activeIndices;
 
 /*added*/
 
+int g_dx;
+int g_dy;
+int g_dz;
+
+int g_numTriangles;
+
 float g_clothRadius;
 
 float g_kAbsorption;
@@ -346,6 +352,13 @@ void Init(int scene, bool centerCamera=true)
 
 
 	/*added initiate begin*/
+
+	g_dx = 0;
+	g_dy = 0;
+	g_dz = 0;
+
+	g_numTriangles = 0;
+
 	g_kAbsorption = 0.0;
 	g_kDiffusion = 0.0;
 	g_kDiffusionGravity = 0.0;
@@ -763,10 +776,10 @@ void GLUTUpdate()
 			//g_saturations[0] = 1.0f;
 			//g_saturations[1] = 1.0f;
 
-			//g_saturations[962] = 1.0f;
-			//g_saturations[963] = 1.0f;
-			//g_saturations[399] = 1.0f;
-			//g_saturations[295] = 1.0f;
+			//g_saturations[962] = g_maxSaturation;
+			//g_saturations[963] = g_maxSaturation;
+			//g_saturations[399] = g_maxSaturation;
+			//g_saturations[295] = g_maxSaturation;
 		}
 
 		/*	do diffuse	*/
@@ -2486,6 +2499,7 @@ int main(int argc, char* argv[])
 	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Goo", true));
 	g_scenes.push_back(new BunnyBath("Bunny Bath Dam", true));*/
 
+	g_scenes.push_back(new FluidClothCoupling2("Fluid Cloth Coupling Water2", false));
 	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Water", false));
 
     // init gl
