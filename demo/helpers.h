@@ -663,6 +663,7 @@ void CreateSDF(const char* meshFile, float scale, Vec3 lower, float expand=0.0f)
 }
 
 inline int GridIndex(int x, int y, int dx) { return y*dx + x; }
+inline int GridIndex(int x, int y, int z, int dx, int dy){ return z * dx * dy + y * dx + x; }
 
 void CreateSpring(int i, int j, float stiffness, float give=0.0f)
 {
@@ -781,13 +782,13 @@ void CreateSpringGrid2(Vec3 lower, int dx, int dy, int dz, float radius, int pha
 
 				if (x > 0 && y > 0)
 				{
-					g_triangles.push_back(baseIndex + GridIndex(x - 1, y - 1, dx));
-					g_triangles.push_back(baseIndex + GridIndex(x, y - 1, dx));
-					g_triangles.push_back(baseIndex + GridIndex(x, y, dx));
+					g_triangles.push_back(baseIndex + GridIndex(x - 1, y - 1, z, dx, dy));
+					g_triangles.push_back(baseIndex + GridIndex(x, y - 1, z, dx, dy));
+					g_triangles.push_back(baseIndex + GridIndex(x, y, z, dx, dy));
 
-					g_triangles.push_back(baseIndex + GridIndex(x - 1, y - 1, dx));
-					g_triangles.push_back(baseIndex + GridIndex(x, y, dx));
-					g_triangles.push_back(baseIndex + GridIndex(x - 1, y, dx));
+					g_triangles.push_back(baseIndex + GridIndex(x - 1, y - 1, z, dx, dy));
+					g_triangles.push_back(baseIndex + GridIndex(x, y, z, dx, dy));
+					g_triangles.push_back(baseIndex + GridIndex(x - 1, y, z, dx, dy));
 
 					g_triangleNormals.push_back(Vec3(0.0f, 1.0f, 0.0f));
 					g_triangleNormals.push_back(Vec3(0.0f, 1.0f, 0.0f));
@@ -806,7 +807,7 @@ void CreateSpringGrid2(Vec3 lower, int dx, int dy, int dz, float radius, int pha
 		{
 			for (int x = 0; x < dx; ++x)
 			{
-				int index0 = y*dx + x;
+				int index0 = z * dx * dy + y*dx + x;
 
 				if (x > 0)
 				{
@@ -843,18 +844,30 @@ void CreateSpringGrid2(Vec3 lower, int dx, int dy, int dz, float radius, int pha
 		{
 			for (int y = 0; y < dy; ++y)
 			{
-				int index0 = y*dx + x;
+				int index0 = z * dy * dx + y*dx + x;
 
 				if (y > 0)
 				{
-					int index1 = (y - 1)*dx + x;
+					int index1 = z * dy * dx + (y - 1)*dx + x;
 					CreateSpring(baseIndex + index0, baseIndex + index1, stretchStiffness);
 				}
 
 				if (y > 1)
 				{
-					int index2 = (y - 2)*dx + x;
+					int index2 = z * dy * dx + (y - 2)*dx + x;
 					CreateSpring(baseIndex + index0, baseIndex + index2, bendStiffness);
+				}
+			}
+		}
+	}
+
+	for (int z = 0; z < dz; ++z){
+		for (int x = 0; x < dx; ++x){
+			for (int y = 0; y < dy; ++y){
+				int index0 = z * dy * dx + y*dx + x;
+				if (z > 0){
+					int index1 = (z - 1) * dy * dx + y * dy + x;
+					CreateSpring(baseIndex + index0, baseIndex + index1, bendStiffness);
 				}
 			}
 		}
@@ -1207,12 +1220,16 @@ void UpdatingSaturations(int idx){
 
 	int dimx = g_dx;
 	int dimy = g_dy;
+	int dimz = g_dz;
 	int dx = 2;
 	int dy = (dimy - 1) * 2;
+	int dz = (dimx - 1) * (dimy - 1) * 2;
 
-	int x = idx % dimx;
-	int y = idx / dimx;
-	int j = x * dx + y * dy;
+	int z = idx / (dimx * dimy);
+	int idxz = idx % (dimx * dimy);
+	int x = idxz % dimx;
+	int y = idxz / dimx;
+	int j = x * dx + y * dy + z * dz;
 
 	float tmp = g_mDrip;
 
@@ -1328,81 +1345,95 @@ void CalculateClothColors(){
 
 	int dimx = g_dx;
 	int dimy = g_dy;
+	int dimz = g_dz;
 	int j = 0;
 	int dx = 2;
 	int dy = (dimx - 1) * 2;
+	int dz = (dimx - 1) * (dimy - 1) * 2;
 	Vec4 color = g_clothColor;
 	Vec4 colorBase = color / g_maxSaturation;
-	for (int y = 0; y < dimy; y++)
-		for (int x = 0; x < dimx; x++){
 
-			float saturation = 0.0;
-			/*complex*/
-			if (y == 0){
-				if (x == 0){
-					saturation = (g_saturations[j] + g_saturations[j + 1]) / 2;
+
+	for (int z = 0; z < dimz; z++){
+		for (int y = 0; y < dimy; y++)
+			for (int x = 0; x < dimx; x++){
+
+				float saturation = 0.0;
+				/*complex*/
+				if (y == 0){
+					if (x == 0){
+						saturation = (g_saturations[j] + g_saturations[j + 1]) / 2;
+					}
+					else if (x == dimx - 1){
+						saturation = g_saturations[j - dx];
+					}
+					else{
+						saturation = (g_saturations[j] + g_saturations[j + 1] + g_saturations[j - dx]) / 3;
+					}
 				}
-				else if (x == dimx - 1){
-					saturation = g_saturations[j - dx];
+				else if (y == dimx - 1){
+					if (x == 0){
+						saturation = g_saturations[j - dy + 1];
+					}
+					else if (x == dimx - 1){
+						saturation = (g_saturations[j - dx - dy] + g_saturations[j - dx - dy + 1]) / 2;
+					}
+					else {
+						saturation = (g_saturations[j - dy + 1] + g_saturations[j - dy - dx] + g_saturations[j - dy - dx + 1]) / 3;
+					}
+
 				}
 				else{
-					saturation = (g_saturations[j] + g_saturations[j + 1] + g_saturations[j - dx]) / 3;
+					if (x == 0){
+						saturation = (g_saturations[j] + g_saturations[j + 1] + g_saturations[j - dy + 1]) / 3;
+					}
+					else if (x == dimx - 1){
+						saturation = (g_saturations[j - dx] + g_saturations[j - dx - dy] + g_saturations[j - dx - dy + 1]) / 3;
+					}
+					else {
+						saturation = (g_saturations[j] + g_saturations[j + 1] + g_saturations[j - dx] +
+							g_saturations[j - dy + 1] + g_saturations[j - dy - dx] + g_saturations[j - dy - dx + 1]) / 6;
+					}
 				}
-			}
-			else if (y == dimx - 1){
-				if (x == 0){
-					saturation = g_saturations[j - dy + 1];
-				}
-				else if (x == dimx - 1){
-					saturation = (g_saturations[j - dx - dy] + g_saturations[j - dx - dy + 1]) / 2;
+				if (x != dimx - 1)
+					j += 2;
+
+				//printf("%f\n", saturation);
+
+
+				/*naive version*/
+				//if (x == dimx - 1 && y == dimx - 1){
+				//	saturation = (g_saturations[j - dx - dy] + g_saturations[j - dx - dy + 1]) / 2;
+				//}
+				//else if (x == dimx - 1){
+				//	/*right boardary*/
+				//	saturation = g_saturations[j - dx];
+				//	//printf("right: %f\n", saturation);
+				//}
+				//else if (y == dimx - 1){
+				//	/*bottom boardary*/
+				//	saturation = g_saturations[j - dy + 1];
+				//	//printf("bottom: %f\n", saturation);
+				//}
+				//else {
+				//	saturation = (g_saturations[j] + g_saturations[j + 1]) / 2;
+				//	j += 2;
+				//}
+
+				//Vec4 color = Vec4(1.0f, 0.3f, 0.3f, 1.0f);
+
+				if (saturation < 0.0) saturation = 0.0;
+				if (saturation > g_maxSaturation) saturation = g_maxSaturation;
+
+				if (g_markColor && saturation > 0.0){
+					g_colors[z * dimx * dimy + y * dimx + x] = g_markColors[(int)(saturation / g_maxSaturation * 10)];
 				}
 				else {
-					saturation = (g_saturations[j - dy + 1] + g_saturations[j - dy - dx] + g_saturations[j - dy - dx + 1]) / 3;
+					g_colors[z * dimx * dimy + y * dimx + x] = colorBase * (g_maxSaturation - saturation);
 				}
-
+				//printf("%d: %f, %f, %f\n", y * dimx + x, g_colors[y * dimx + x].x, g_colors[y * dimx + x].y, g_colors[y * dimx + x].z);
 			}
-			else{
-				if (x == 0){
-					saturation = (g_saturations[j] + g_saturations[j + 1] + g_saturations[j - dy + 1]) / 3;
-				}
-				else if (x == dimx - 1){
-					saturation = (g_saturations[j - dx] + g_saturations[j - dx - dy] + g_saturations[j - dx - dy + 1]) / 3;
-				}
-				else {
-					saturation = (g_saturations[j] + g_saturations[j + 1] + g_saturations[j - dx] +
-						g_saturations[j - dy + 1] + g_saturations[j - dy - dx] + g_saturations[j - dy - dx + 1]) / 6;
-				}
-			}
-			if (x != dimx - 1)
-				j += 2;
-
-			//printf("%f\n", saturation);
-
-
-			/*naive version*/
-			//if (x == dimx - 1 && y == dimx - 1){
-			//	saturation = (g_saturations[j - dx - dy] + g_saturations[j - dx - dy + 1]) / 2;
-			//}
-			//else if (x == dimx - 1){
-			//	/*right boardary*/
-			//	saturation = g_saturations[j - dx];
-			//	//printf("right: %f\n", saturation);
-			//}
-			//else if (y == dimx - 1){
-			//	/*bottom boardary*/
-			//	saturation = g_saturations[j - dy + 1];
-			//	//printf("bottom: %f\n", saturation);
-			//}
-			//else {
-			//	saturation = (g_saturations[j] + g_saturations[j + 1]) / 2;
-			//	j += 2;
-			//}
-
-			//Vec4 color = Vec4(1.0f, 0.3f, 0.3f, 1.0f);
-
-			g_colors[y * dimx + x] = colorBase * (g_maxSaturation - saturation);
-			//printf("%d: %f, %f, %f\n", y * dimx + x, g_colors[y * dimx + x].x, g_colors[y * dimx + x].y, g_colors[y * dimx + x].z);
-		}
+	}
 }
 
 void CalculateTriangleCenters(){
@@ -1410,47 +1441,59 @@ void CalculateTriangleCenters(){
 	if (g_triangleCenters.size() == 0)
 		g_triangleCenters.resize(g_numTriangles);
 
+	//printf("size: %d\n", g_triangleCenters.size());
+
 	int dimx = g_dx;
 	int dimy = g_dy;
+	int dimz = g_dz;
 	int index = 0;
-	for (int y = 0; y < dimy; y++)
-		for (int x = 0; x < dimx; x++){
-			if (x > 0 && y > 0){
-				Vec3 position0 = g_positions[GridIndex(x - 1, y - 1, dimx)];
-				Vec3 position1 = g_positions[GridIndex(x, y - 1, dimx)];
-				Vec3 position2 = g_positions[GridIndex(x, y, dimx)];
-				Vec3 position3 = g_positions[GridIndex(x - 1, y, dimx)];
+	for (int z = 0; z < dimz; z++)
+		for (int y = 0; y < dimy; y++)
+			for (int x = 0; x < dimx; x++){
+				if (x > 0 && y > 0){
+					Vec3 position0 = g_positions[GridIndex(x - 1, y - 1, z, dimx, dimy)];
+					Vec3 position1 = g_positions[GridIndex(x, y - 1, z, dimx, dimy)];
+					Vec3 position2 = g_positions[GridIndex(x, y, z, dimx, dimy)];
+					Vec3 position3 = g_positions[GridIndex(x - 1, y, z, dimx, dimy)];
 
-				Vec3 center1 = position1 + (position0 - position1 + position2 - position1) / 3;
-				Vec3 center2 = position3 + (position0 - position3 + position2 - position3) / 3;
+					Vec3 center1 = position1 + (position0 - position1 + position2 - position1) / 3;
+					Vec3 center2 = position3 + (position0 - position3 + position2 - position3) / 3;
 
-				g_triangleCenters[index] = center1;
-				g_triangleCenters[index + 1] = center2;
+					g_triangleCenters[index] = center1;
+					g_triangleCenters[index + 1] = center2;
 
-				//printf("%d, %f, %f, %f\n", GridIndex(x - 1, y - 1, dimx), position0.x, position0.y, position0.z);
-				//printf("%d, %f, %f, %f\n", GridIndex(x, y - 1, dimx), position1.x, position1.y, position1.z);
-				//printf("%d, %f, %f, %f\n", GridIndex(x, y, dimx), position2.x, position2.y, position2.z);
+					//printf("%d, %f, %f, %f\n", GridIndex(x - 1, y - 1, dimx), position0.x, position0.y, position0.z);
+					//printf("%d, %f, %f, %f\n", GridIndex(x, y - 1, dimx), position1.x, position1.y, position1.z);
+					//printf("%d, %f, %f, %f\n", GridIndex(x, y, dimx), position2.x, position2.y, position2.z);
 
-				//printf("%d, %f, %f, %f\n", index, center1.x, center1.y, center1.z);
-				//printf("%d, %f, %f, %f\n", index + 1, center2.x, center2.y, center2.z);
+					//printf("%d, %f, %f, %f\n", index, center1.x, center1.y, center1.z);
+					//printf("%d, %f, %f, %f\n", index + 1, center2.x, center2.y, center2.z);
+					//printf("%d, %d, %d\n", x, y, z);
 
-				index += 2;
+					index += 2;
+
+				}
 
 			}
-
-		}
 
 
 }
 
-Vec3 calculateCosTheta(int index, int idx1, int idx2, int idx3, int min, int max, int dimx){
+Vec3 calculateCosTheta(int index, int idx1, int idx2, int idx3){
 	float t1 = 10.0, t2 = 10.0, t3 = 10.0;
-	if (idx1 >= min && idx1 < max && ((index - 1) % dimx != 0)){
+
+	int dy = (g_dx - 1) * 2;
+	int dz = (g_dx - 1) * (g_dy - 1) * 2;
+	int z = index / dz;
+	int min = z * dz;
+	int max = min + dz - 1;
+	
+	if (idx1 >= min && idx1 < max && ((index - 1) % dy != 0)){
 		Vec3 dir = g_triangleCenters[idx1] - g_triangleCenters[index];
 		Vec3 gDir = Vec3(0.0, -1.0, 0.0);
 		t1 = (-dir.y) / (sqrt(sqr(dir.x) + sqr(dir.y) + sqr(dir.z)));
 	}
-	if (idx2 >= min && idx2 < max && ((index + 2) % dimx != 0)){
+	if (idx2 >= min && idx2 < max && ((index + 2) % dy != 0)){
 		Vec3 dir = g_triangleCenters[idx2] - g_triangleCenters[index];
 		Vec3 gDir = Vec3(0.0, -1.0, 0.0);
 		t2 = (-dir.y) / (sqrt(sqr(dir.x) + sqr(dir.y) + sqr(dir.z)));
@@ -1476,9 +1519,9 @@ void CalculateThetas(){
 	int numGrid = g_numTriangles / 2;
 	int index = 0;
 	for (int i = 0; i < numGrid; i++){
-		g_thetas[index] = calculateCosTheta(index, index - dy + 1, index + 3, index + 1, 0, numMax, dy);
+		g_thetas[index] = calculateCosTheta(index, index - dy + 1, index + 3, index + 1);
 		index++;
-		g_thetas[index] = calculateCosTheta(index, index - 3, index - 1, index + dy - 1, 0, numMax, dy);
+		g_thetas[index] = calculateCosTheta(index, index - 3, index - 1, index + dy - 1);
 		index++;
 
 		//printf("1:%d, %f, %f, %f\n", index, g_thetas[index].x, g_thetas[index].y, g_thetas[index].z);
@@ -1489,6 +1532,10 @@ void CalculateThetas(){
 
 float getMin(float x, float y){
 	if (x < y) return x;
+	else return y;
+}
+float getMax(float x, float y){
+	if (x > y) return x;
 	else return y;
 }
 
@@ -1506,20 +1553,18 @@ void DiffuseCloth(){
 		{
 			float sSum = 0;
 			float si = g_saturations[index];
-			//printf("%f, %f, %d\n", si, g_saturations[index], index);
 			Vec3 thetas = g_thetas[index];
-			//printf("%d, %f, %f, %f\n", index, thetas.x, thetas.y, thetas.z);
 			Vec3 deltasin = Vector3(0.0, 0.0, 0.0);
 			if (thetas.x <= 1.0){
-				deltasin.x = getMin(0.0f, g_kDiffusion * (si - g_saturations[index - dy + 1]) + g_kDiffusionGravity * si * thetas.x);
+				deltasin.x = getMax(0.0f, g_kDiffusion * (si - g_saturations[index - dy + 1]) + g_kDiffusionGravity * si * thetas.x);
 				sSum += deltasin.x;
 			}
 			if (thetas.y <= 1.0){
-				deltasin.y = getMin(0.0f, g_kDiffusion * (si - g_saturations[index + 3]) + g_kDiffusionGravity * si * thetas.y);
+				deltasin.y = getMax(0.0f, g_kDiffusion * (si - g_saturations[index + 3]) + g_kDiffusionGravity * si * thetas.y);
 				sSum += deltasin.y;
 			}
 			if (thetas.z <= 1.0){
-				deltasin.z = getMin(0.0f, g_kDiffusion * (si - g_saturations[index + 1]) + g_kDiffusionGravity * si * thetas.z);
+				deltasin.z = getMax(0.0f, g_kDiffusion * (si - g_saturations[index + 1]) + g_kDiffusionGravity * si * thetas.z);
 				sSum += deltasin.z;
 			}
 
@@ -1527,8 +1572,6 @@ void DiffuseCloth(){
 			if (sSum > si){
 				normFac = si / sSum;
 			}
-
-			//printf("%f, %f, %f\n", sSum, si, normFac);
 
 			if (thetas.x <= 1.0){
 				deltas[index] += -normFac * deltasin.x;
@@ -1543,6 +1586,13 @@ void DiffuseCloth(){
 				deltas[index + 1] += normFac * deltasin.z;//* ai/an = 1.0
 			}
 
+
+			//if (!(deltas[index] >= 0)){
+			//	printf("%d, %f, %f, %f, %f\n", index, g_saturations[index], thetas.x, thetas.y, thetas.z);
+			//	printf("%f, %f, %f\n", sSum, si, normFac);
+			//	printf("%f, %f, %f, %f\n\n", deltas[index], deltas[index - dy + 1], deltas[index + 3], deltas[index + 1]);
+			//}
+
 			index++;
 		}
 		{
@@ -1552,15 +1602,15 @@ void DiffuseCloth(){
 			//printf("%f, %f, %d\n", si, g_saturations[index], index);
 			Vec3 deltasin = Vector3(0.0, 0.0, 0.0);
 			if (thetas.x <= 1.0){
-				deltasin.x = getMin(0.0f, g_kDiffusion * (si - g_saturations[index - 3]) + g_kDiffusionGravity * si * thetas.x);
+				deltasin.x = getMax(0.0f, g_kDiffusion * (si - g_saturations[index - 3]) + g_kDiffusionGravity * si * thetas.x);
 				sSum += deltasin.x;
 			}
 			if (thetas.y <= 1.0){
-				deltasin.y = getMin(0.0f, g_kDiffusion * (si - g_saturations[index - 1]) + g_kDiffusionGravity * si * thetas.y);
+				deltasin.y = getMax(0.0f, g_kDiffusion * (si - g_saturations[index - 1]) + g_kDiffusionGravity * si * thetas.y);
 				sSum += deltasin.y;
 			}
 			if (thetas.z <= 1.0){
-				deltasin.z = getMin(0.0f, g_kDiffusion * (si - g_saturations[index + dy - 1]) + g_kDiffusionGravity * si * thetas.z);
+				deltasin.z = getMax(0.0f, g_kDiffusion * (si - g_saturations[index + dy - 1]) + g_kDiffusionGravity * si * thetas.z);
 				sSum += deltasin.z;
 			}
 
@@ -1581,22 +1631,37 @@ void DiffuseCloth(){
 				deltas[index] += -normFac * deltasin.z;
 				deltas[index + dy - 1] += normFac * deltasin.z;//* ai/an = 1.0
 			}
+
+			//if (!(deltas[index] >= 0)){
+			//	printf("%d, %f, %f, %f, %f\n", index, g_saturations[index], thetas.x, thetas.y, thetas.z);
+			//	printf("%f, %f, %f\n", sSum, si, normFac);
+			//	printf("%f, %f, %f, %f\n\n", deltas[index], deltas[index - dy + 1], deltas[index + 3], deltas[index + 1]);
+			//}
+
 			index++;
 		}
 	}
 	int triangleNum = g_numTriangles;
+	int tmp = (g_dx - 1) * 2;
 	for (int i = 0; i < triangleNum; i++){
 		g_saturations[i] += deltas[i];
-		if (g_saturations[i] < 0.0){
-			//printf("mark0\n");
-			g_saturations[i] = 0.0;
+		if (g_saturations[i] < 0){
+			if (g_saturations[i] == -0.0){
+				printf("mark\n");
+			}
+			g_saturations[i] = 0;
 		}
-		//if (g_saturations[i] > 1.0){
-		//	//printf("mark\n");
-		//	//g_saturations[i] = 1.0;
-		//}
-		//printf("%d, %f, %f\n", i, deltas[i], g_saturations[i]);
-
+		/*if (g_saturations[i] < 0){
+			printf("<0: %d\n", i);
+		}*/
+		//if (i % tmp == 4 && i / tmp < 8)
+		//	printf("\n");
+		//if (i % tmp == 8 && i / tmp < 8)
+		//	printf("\n");
+		//if (i % tmp == 8 && i / tmp == 8)
+		//	printf("\n");
+		//if (i % tmp < 8 && i / tmp < 8)
+		//	printf("%d %.2f %.2f\t", i, deltas[i], g_saturations[i]);
 	}
 }
 
@@ -1672,6 +1737,7 @@ void Dripping(){
 	//printf("%d ", activeCount);
 
 	for (int i = 0; i < triangleNum; i++){
+		//printf("%f ", g_saturations[i]);
 		if (g_saturations[i] > g_maxSaturation){
 			float m = g_saturations[i] - g_maxSaturation;
 			g_dripBuffer[i] += m;
@@ -1685,6 +1751,7 @@ void Dripping(){
 		}
 	}
 
+	//printf("\n");
 	//printf(" %d \n", activeCount);
 
 	flexSetActive(g_flex, &g_activeIndices[0], activeCount, eFlexMemoryHost);

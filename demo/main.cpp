@@ -106,6 +106,7 @@ vector<bool> g_absorbable;
 
 Vec4 g_clothColor;
 vector<Vec4> g_colors;
+vector<Vec4> g_markColors;
 
 float g_kDiffusion;
 float g_kDiffusionGravity;
@@ -120,6 +121,9 @@ vector<float> g_dripBuffer;
 bool g_absorb;
 bool g_diffuse;
 bool g_drip;
+bool g_markColor;
+
+bool g_camInit = false;
 
 /*added end*/
 
@@ -368,6 +372,24 @@ void Init(int scene, bool centerCamera=true)
 	g_clothColor = Vec4(0.3f, 1.0f, 1.0f, 1.0f);
 	g_colors.resize(0);
 
+	//for (int i = 0; i <= 10; i++){
+	//	float tmp = (10 - i) / 10.0;
+	//	g_markColors.push_back(Vec4(tmp, tmp, tmp, 1.0));
+	//}
+
+	g_markColors.push_back(Vec4(1.0, 1.0, 1.0, 1.0));
+	g_markColors.push_back(Vec4(0.5, 0.0, 1.0, 1.0));
+	g_markColors.push_back(Vec4(0.0, 0.0, 1.0, 1.0));
+	g_markColors.push_back(Vec4(0.0, 0.5, 1.0, 1.0));
+	g_markColors.push_back(Vec4(0.0, 1.0, 1.0, 1.0));
+	g_markColors.push_back(Vec4(0.0, 1.0, 0.5, 1.0));
+	g_markColors.push_back(Vec4(0.0, 1.0, 0.0, 1.0));
+	g_markColors.push_back(Vec4(0.5, 1.0, 0.0, 1.0));
+	g_markColors.push_back(Vec4(1.0, 1.0, 0.0, 1.0));
+	g_markColors.push_back(Vec4(1.0, 0.5, 0.0, 1.0));
+	g_markColors.push_back(Vec4(1.0, 0.0, 0.0, 1.0));
+
+
 	g_maxSaturation = 3.0;
 	g_absorbable.resize(0);
 	g_saturations.resize(0);
@@ -381,6 +403,8 @@ void Init(int scene, bool centerCamera=true)
 	g_absorb = false;
 	g_diffuse = false;
 	g_drip = false;
+
+	g_camInit = true;
 
 	/*added initiate end*/
 
@@ -475,7 +499,7 @@ void Init(int scene, bool centerCamera=true)
 	g_params.mDiffuseSortAxis[2] = 0.0f;
 	g_params.mEnableCCD = false;
 
-	g_numSubsteps = 2;
+	g_numSubsteps = 3;
 
 	// planes created after particles
 	g_params.mNumPlanes = 1;
@@ -634,7 +658,7 @@ void Init(int scene, bool centerCamera=true)
 	g_anisotropy3.resize(maxParticles);
 	
 	// center camera on particles
-	if (centerCamera)
+	if (centerCamera && g_camInit)
 	{
 		g_camPos = Vec3((g_sceneLower.x+g_sceneUpper.x)*0.5f, min(g_sceneUpper.y*1.25f, 7.0f), g_sceneUpper.z + min(g_sceneUpper.y, 8.0f)*2.0f);
 		g_camAngle = Vec3(0.0f, -DegToRad(10.0f), 0.0f);
@@ -757,7 +781,6 @@ void GLUTUpdate()
 	g_realdt = float(currentTime-lastTime)*0.8f + g_realdt*0.2f;
 	lastTime = currentTime;
 	
-	
 
 	if (!g_pause || g_step)	
 	{	
@@ -789,8 +812,6 @@ void GLUTUpdate()
 			CalculateTriangleCenters();
 			CalculateThetas();
 
-			g_kDiffusion = 0.3;
-			g_kDiffusionGravity = 0.2;
 			DiffuseCloth();
 		}
 
@@ -1196,16 +1217,14 @@ void GLUTUpdate()
 	DrawMesh(g_staticMesh, g_meshColor);
 	DrawConvexes();
 
-	if (g_drawCloth && g_absorb){
+	if (g_drawCloth){
 		/*change cloth color*/
 		CalculateClothColors();
 		DrawClothColor(&g_positions[0], &g_colors[0], &g_normals[0], g_uvs.size() ? &g_uvs[0].x : NULL, &g_triangles[0], g_triangles.size() / 3, g_positions.size(), 3, g_expandCloth);
 		//DrawCloth(&g_positions[0], &g_normals[0], g_uvs.size() ? &g_uvs[0].x : NULL, &g_triangles[0], g_triangles.size() / 3, g_positions.size(), 3, g_expandCloth);
 	}
 
-	if (g_drawCloth){
-		DrawCloth(&g_positions[0], &g_normals[0], g_uvs.size() ? &g_uvs[0].x : NULL, &g_triangles[0], g_triangles.size() / 3, g_positions.size(), 3, g_expandCloth);
-	}
+	
 	if (g_drawRopes)
 	{
 		for (size_t i=0; i < g_ropes.size(); ++i)
@@ -1624,6 +1643,16 @@ void GLUTUpdate()
 		imguiBeginScrollArea("Options", uiLeft, g_screenHeight-uiBorder-uiHeight-uiOffset-uiBorder, uiWidth, uiHeight, &scroll); 
 		imguiSeparatorLine();
 
+
+		// scene options
+		g_scenes[g_scene]->DoGui();
+
+		if (imguiButton("Reset Scene"))
+			Reset();
+
+
+		imguiSeparatorLine();
+
 		// global options
 		imguiLabel("Global");
 		if (imguiCheck("Emit particles", g_emit))
@@ -1631,6 +1660,34 @@ void GLUTUpdate()
 
 		if (imguiCheck("Pause", g_pause))
 			g_pause = !g_pause;
+
+		imguiSeparatorLine();
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		//imguiSlider("kAbsorption", &g_kAbsorption, 0.0, 1.0, 0.0);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
 
 		imguiSeparatorLine();
 
@@ -1652,35 +1709,31 @@ void GLUTUpdate()
 		if (imguiCheck("Draw Springs", bool(g_drawSprings!=0)))
 			g_drawSprings = (g_drawSprings)?0:1;
 
-		imguiSeparatorLine();
+		
 
-		// scene options
-		g_scenes[g_scene]->DoGui();
+		
 
-		if (imguiButton("Reset Scene"))
-			Reset();
+		//imguiSeparatorLine();
 
-		imguiSeparatorLine();
+		//float n = float(g_numSubsteps);
+		//if (imguiSlider("Num Substeps", &n, 1, 10, 1))
+		//	g_numSubsteps = int(n);
 
-		float n = float(g_numSubsteps);
-		if (imguiSlider("Num Substeps", &n, 1, 10, 1))
-			g_numSubsteps = int(n);
-
-		n = float(g_params.mNumIterations);
-		if (imguiSlider("Num Iterations", &n, 1, 20, 1))
-			g_params.mNumIterations = int(n);
+		//n = float(g_params.mNumIterations);
+		//if (imguiSlider("Num Iterations", &n, 1, 20, 1))
+		//	g_params.mNumIterations = int(n);
 
 		imguiSeparatorLine();
 		imguiSlider("Gravity X", &g_params.mGravity[0], -50.0f, 50.0f, 1.0f);
 		imguiSlider("Gravity Y", &g_params.mGravity[1], -50.0f, 50.0f, 1.0f);
 		imguiSlider("Gravity Z", &g_params.mGravity[2], -50.0f, 50.0f, 1.0f);
 
-		imguiSeparatorLine();
-		imguiSlider("Radius", &g_params.mRadius, 0.01f, 0.5f, 0.01f);
-		imguiSlider("Solid Radius", &g_params.mSolidRestDistance, 0.0f, 0.5f, 0.001f);
-		imguiSlider("Fluid Radius", &g_params.mFluidRestDistance, 0.0f, 0.5f, 0.001f);
-		imguiSlider("Collision Distance", &g_params.mCollisionDistance, 0.0f, 0.5f, 0.001f);
-		imguiSlider("Collision Margin", &g_params.mShapeCollisionMargin, 0.0f, 5.0f, 0.01f);
+		//imguiSeparatorLine();
+		//imguiSlider("Radius", &g_params.mRadius, 0.01f, 0.5f, 0.01f);
+		//imguiSlider("Solid Radius", &g_params.mSolidRestDistance, 0.0f, 0.5f, 0.001f);
+		//imguiSlider("Fluid Radius", &g_params.mFluidRestDistance, 0.0f, 0.5f, 0.001f);
+		//imguiSlider("Collision Distance", &g_params.mCollisionDistance, 0.0f, 0.5f, 0.001f);
+		//imguiSlider("Collision Margin", &g_params.mShapeCollisionMargin, 0.0f, 5.0f, 0.01f);
 
 		//// common params
 		//imguiSeparatorLine();
@@ -1694,11 +1747,11 @@ void GLUTUpdate()
 		//imguiSlider("Dissipation", &g_params.mDissipation, 0.0f, 0.01f, 0.0001f);
 		//imguiSlider("SOR", &g_params.mRelaxationFactor, 0.0f, 5.0f, 0.01f);
 	
-		// cloth params
-		imguiSeparatorLine();
-		imguiSlider("Wind", &g_windStrength, -1.0f, 1.0f, 0.01f);
-		imguiSlider("Drag", &g_params.mDrag, 0.0f, 1.0f, 0.01f);
-		imguiSlider("Lift", &g_params.mLift, 0.0f, 1.0f, 0.01f);
+		//// cloth params
+		//imguiSeparatorLine();
+		//imguiSlider("Wind", &g_windStrength, -1.0f, 1.0f, 0.01f);
+		//imguiSlider("Drag", &g_params.mDrag, 0.0f, 1.0f, 0.01f);
+		//imguiSlider("Lift", &g_params.mLift, 0.0f, 1.0f, 0.01f);
 		imguiSeparatorLine();
 
 		// fluid params
@@ -2499,7 +2552,7 @@ int main(int argc, char* argv[])
 	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Goo", true));
 	g_scenes.push_back(new BunnyBath("Bunny Bath Dam", true));*/
 
-	g_scenes.push_back(new FluidClothCoupling2("Fluid Cloth Coupling Water2", false));
+	//g_scenes.push_back(new FluidClothCoupling2("Fluid Cloth Coupling Water2", false));
 	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Water", false));
 
     // init gl

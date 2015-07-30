@@ -1603,9 +1603,17 @@ public:
 		g_drawSprings = false;
 		g_drawEllipsoids = true;
 
-		g_absorb = true;
-		g_diffuse = true;
-		g_drip = true;
+		g_kDiffusion = 0.3;
+		g_kDiffusionGravity = 0.2;
+
+		//g_absorb = true;
+		//g_diffuse = true;
+		//g_drip = true;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
 	}
 
 	bool mViscous;
@@ -1635,7 +1643,7 @@ public:
 			g_dy = dimy;
 			g_dz = dimz;
 
-			g_numTriangles = (dimx - 1) * (dimy - 1) * dimz;
+			g_numTriangles = (dimx - 1) * (dimy - 1) * dimz * 2;
 
 			int clothStart = 0;
 
