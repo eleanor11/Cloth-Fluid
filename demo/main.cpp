@@ -49,8 +49,10 @@
 
 using namespace std;
 
-int g_screenWidth = 1280;
-int g_screenHeight = 720;
+//int g_screenWidth = 1280;
+//int g_screenHeight = 720;
+int g_screenWidth = 800;
+int g_screenHeight = 600;
 bool g_msaa = true;
 GLuint g_msaaFbo;
 GLuint g_msaaColorBuf;
@@ -93,16 +95,31 @@ vector<int> g_activeIndices;
 
 /*added*/
 
+int colorFlag = -1;
+
+bool is_cube = false;
+bool is_point = false;
+bool is_hollow = false;
+bool is_complex = false;
+
+int sceneNum = 0;
+
 int g_dx;
 int g_dy;
 int g_dz;
 
 int g_numTriangles;
+int g_numCubes;
+int g_numPoints;
 
 float g_clothRadius;
 
+int g_emitterWidth;
+
 float g_kAbsorption;
+float g_kMaxAbsorption;
 vector<bool> g_absorbable;
+vector<int> g_emitTime;
 
 Vec4 g_clothColor;
 vector<Vec4> g_colors;
@@ -113,7 +130,14 @@ float g_kDiffusionGravity;
 float g_maxSaturation;
 vector<float> g_saturations;
 vector<Vec3> g_triangleCenters;
+vector<Vec3> g_triangleNeighbours;
 vector<Vec3> g_thetas;
+
+vector<Vec3> g_cubeCenters;
+
+vector<int> g_pointTriangleNums;
+vector<Vec4> g_pointTriangles;
+vector<Vec3> g_trianglePoints;
 
 float g_mDrip;
 vector<float> g_dripBuffer;
@@ -362,8 +386,13 @@ void Init(int scene, bool centerCamera=true)
 	g_dz = 0;
 
 	g_numTriangles = 0;
+	g_numCubes = 0;
+	g_numPoints = 0;
 
-	g_kAbsorption = 0.0;
+	g_emitterWidth = 3;
+
+	g_kAbsorption = 1.0;
+	g_kMaxAbsorption = 0.0;
 	g_kDiffusion = 0.0;
 	g_kDiffusionGravity = 0.0;
 
@@ -377,9 +406,8 @@ void Init(int scene, bool centerCamera=true)
 	//	g_markColors.push_back(Vec4(tmp, tmp, tmp, 1.0));
 	//}
 
-	g_markColors.push_back(Vec4(1.0, 1.0, 1.0, 1.0));
-	g_markColors.push_back(Vec4(0.5, 0.0, 1.0, 1.0));
 	g_markColors.push_back(Vec4(0.0, 0.0, 1.0, 1.0));
+	g_markColors.push_back(Vec4(0.0, 0.25, 1.0, 1.0));
 	g_markColors.push_back(Vec4(0.0, 0.5, 1.0, 1.0));
 	g_markColors.push_back(Vec4(0.0, 1.0, 1.0, 1.0));
 	g_markColors.push_back(Vec4(0.0, 1.0, 0.5, 1.0));
@@ -388,13 +416,18 @@ void Init(int scene, bool centerCamera=true)
 	g_markColors.push_back(Vec4(1.0, 1.0, 0.0, 1.0));
 	g_markColors.push_back(Vec4(1.0, 0.5, 0.0, 1.0));
 	g_markColors.push_back(Vec4(1.0, 0.0, 0.0, 1.0));
+	g_markColors.push_back(Vec4(1.0, 0.0, 0.0, 1.0));
 
 
-	g_maxSaturation = 3.0;
+	g_maxSaturation = 10.0;
 	g_absorbable.resize(0);
+	g_emitTime.resize(0);
 	g_saturations.resize(0);
 	g_triangleCenters.resize(0);
+	g_triangleNeighbours.resize(0);
 	g_thetas.resize(0);
+
+	g_cubeCenters.resize(0);
 
 	g_mDrip = 0.5;
 	g_dripBuffer.resize(0);
@@ -542,6 +575,7 @@ void Init(int scene, bool centerCamera=true)
 
 	g_colors.resize(numParticles);
 	g_absorbable.resize(maxParticles);
+	g_emitTime.resize(maxParticles);
 
 	/*added end*/
 
@@ -789,35 +823,80 @@ void GLUTUpdate()
 		const Vec3 forward(-sinf(g_camAngle.x+spin)*cosf(g_camAngle.y), sinf(g_camAngle.y), -cosf(g_camAngle.x+spin)*cosf(g_camAngle.y));
 		const Vec3 right(Normalize(Cross(forward, Vec3(0.0f, 1.0f, 0.0f))));
 
+		//printf("%f %f %f\n", g_camPos.x, g_camPos.y, g_camPos.z);
+		//printf("%f %f %f\n", g_camAngle.x, g_camAngle.y, g_camAngle.z);
+
 
 		/*added*/
 		/*  do absorb   */
 		if (g_absorb){
-
-			Absorbing();
-
-			//g_saturations[0] = 1.0f;
-			//g_saturations[1] = 1.0f;
-
-			//g_saturations[962] = g_maxSaturation;
-			//g_saturations[963] = g_maxSaturation;
-			//g_saturations[399] = g_maxSaturation;
-			//g_saturations[295] = g_maxSaturation;
+			if (is_complex){
+				AbsorbingComplex();
+			}
+			else {
+				Absorbing();
+			}
 		}
 
 		/*	do diffuse	*/
 
 		if (g_diffuse){
+			if (is_complex){
+				CalculateTriangleCentersComples();
+				CalculateThetasComplex();
+				DiffuseClothComplex();
+			}
 
-			CalculateTriangleCenters();
-			CalculateThetas();
+			else if (sceneNum == 2){
+				//common
+				CalculateTriangleCenters2();
+				CalculateThetas2();
+				DiffuseCloth2();
+			}
 
-			DiffuseCloth();
+			else if (is_point){
+				//point
+				CalculateThetasPoint();
+				DiffuseClothPoint();
+			}
+			else if (is_cube){
+				//cube
+				CalculateCubeCenters();
+				CalculateThetasCube();
+				DiffuseClothCube();
+			}
+			else if (is_hollow){
+				//triangle & hollow
+				CalculateTriangleCentersHollow();
+				CalculateThetasHollow();
+				DiffuseClothHollow();
+			}
+			else{
+				//triangle & piece
+				CalculateTriangleCenters();
+				CalculateThetas();
+				DiffuseCloth();
+			}
+
 		}
 
 		/*  do drip    */
 		if (g_drip){
-			Dripping();
+			if (is_complex){
+				DrippingComplex();
+			}
+			else if (is_point){
+				//point
+				DrippingPoint();
+			}
+			else if (is_cube){
+				//cube
+				DrippingCube();
+			}
+			else {			
+				//triangle
+				Dripping();
+			}
 		}
 
 		/*added end*/
@@ -875,7 +954,7 @@ void GLUTUpdate()
 				for (int k = 0; k < n; ++k)
 				{
 					int emitterWidth = g_emitters[e].mWidth;
-					emitterWidth = 3;
+					emitterWidth = g_emitterWidth;
 					int numParticles = emitterWidth*emitterWidth;
 					for (int i=0; i < numParticles; ++i)
 					{
@@ -893,6 +972,7 @@ void GLUTUpdate()
 								g_velocities[activeCount] = emitterDir*g_emitters[e].mSpeed;
 								g_phases[activeCount] = phase;
 								g_absorbable[activeCount] = true;
+								g_emitTime[activeCount] = 0;
 
 								activeCount++;
 							}
@@ -1211,8 +1291,12 @@ void GLUTUpdate()
 
 	DrawPlanes((Vec4*)g_params.mPlanes, g_params.mNumPlanes, g_drawPlaneBias);
 
-	if (g_drawMesh)
+	if (g_drawMesh){
+		if (g_mesh){
+			CalculateMeshColors();
+		}
 		DrawMesh(g_mesh, g_meshColor);
+	}
 
 	DrawMesh(g_staticMesh, g_meshColor);
 	DrawConvexes();
@@ -1644,12 +1728,9 @@ void GLUTUpdate()
 		imguiSeparatorLine();
 
 
-		// scene options
-		g_scenes[g_scene]->DoGui();
 
 		if (imguiButton("Reset Scene"))
 			Reset();
-
 
 		imguiSeparatorLine();
 
@@ -1663,33 +1744,10 @@ void GLUTUpdate()
 
 		imguiSeparatorLine();
 
-		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
-			if (g_absorb && g_diffuse && g_drip){
-				g_absorb = false;
-				g_diffuse = false;
-				g_drip = false;
-			}
-			else {
-				g_absorb = true;
-				g_diffuse = true;
-				g_drip = true;
-			}
-		}
+		// scene options
+		g_scenes[g_scene]->DoGui();
 
-		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
-			g_absorb = !g_absorb;
-		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
-			g_diffuse = !g_diffuse;
-		if (imguiCheck("Dripping", bool(g_drip != 0)))
-			g_drip = !g_drip;
-		if (imguiCheck("Mark", bool(g_markColor != 0)))
-			g_markColor = !g_markColor;
 
-		//imguiSlider("kAbsorption", &g_kAbsorption, 0.0, 1.0, 0.0);
-		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
-		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
-
-		imguiSeparatorLine();
 
 		if (imguiCheck("Wireframe", g_wireframe))
 			g_wireframe = !g_wireframe;
@@ -1747,11 +1805,11 @@ void GLUTUpdate()
 		//imguiSlider("Dissipation", &g_params.mDissipation, 0.0f, 0.01f, 0.0001f);
 		//imguiSlider("SOR", &g_params.mRelaxationFactor, 0.0f, 5.0f, 0.01f);
 	
-		//// cloth params
-		//imguiSeparatorLine();
-		//imguiSlider("Wind", &g_windStrength, -1.0f, 1.0f, 0.01f);
-		//imguiSlider("Drag", &g_params.mDrag, 0.0f, 1.0f, 0.01f);
-		//imguiSlider("Lift", &g_params.mLift, 0.0f, 1.0f, 0.01f);
+		// cloth params
+		imguiSeparatorLine();
+		imguiSlider("Wind", &g_windStrength, -1.0f, 1.0f, 0.01f);
+		imguiSlider("Drag", &g_params.mDrag, 0.0f, 1.0f, 0.01f);
+		imguiSlider("Lift", &g_params.mLift, 0.0f, 1.0f, 0.01f);
 		imguiSeparatorLine();
 
 		// fluid params
@@ -2552,8 +2610,24 @@ int main(int argc, char* argv[])
 	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Goo", true));
 	g_scenes.push_back(new BunnyBath("Bunny Bath Dam", true));*/
 
-	//g_scenes.push_back(new FluidClothCoupling2("Fluid Cloth Coupling Water2", false));
-	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Water", false));
+
+	//g_scenes.push_back(new FluidObjectHollow2("Fluid Object Hollow2", false));
+
+	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Water, Triangle", false));
+	g_scenes.push_back(new FluidClothCoupling("Fluid Cloth Coupling Water, Triangle", false, 1));
+	g_scenes.push_back(new FluidClothCoupling2("Fluid Cloth Coupling Water, Triangle, Hollow, Common", false));
+	//g_scenes.push_back(new FluidClothCoupling3("Fluid Cloth Coupling Water, Triangle, Hollow", false));
+	g_scenes.push_back(new FluidClothCoupling4("Fluid Cloth Coupling Water, Cube, Solid", false));
+	g_scenes.push_back(new FluidClothCoupling5("Fluid Cloth Coupling Water, Point, Hollow", false));
+	g_scenes.push_back(new FluidClothCoupling6("Fluid Cloth Coupling Water, Point, Solid", false));
+
+	g_scenes.push_back(new FluidObjectHollow("Fluid Object Hollow", false));
+	g_scenes.push_back(new FluidObjectHollow("Fluid Object Hollow Viscosity", true));
+
+	g_scenes.push_back(new FluidObjectSolid("Fluid Object Solid", false));
+	g_scenes.push_back(new FluidObjectSolid("Fluid Object Solid Viscosity", true));
+
+	//g_scenes.push_back(new Inflatable("Inflatables"));
 
     // init gl
     glutInit(&argc, argv);

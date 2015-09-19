@@ -1,4 +1,3 @@
-d:\develop\codes\vs2013\flex_working\extensions\compiler\vc11\release\vc120.pdb
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\release\vc120.pdb
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\release\voxelize.obj
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\release\sdf.obj
@@ -7,12 +6,9 @@ d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\releas
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\release\maths.obj
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\release\core.obj
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\release\aabbtree.obj
-d:\develop\codes\vs2013\flex_working\lib\win32\flexextrelease_x86.lib
-d:\develop\codes\vs2013\flex_working\lib\win32\flexextrelease_x86.exp
+d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\win32\release\flexext.obj
 d:\develop\codes\vs2013\flex_working\cloth-water\lib\win32\flexextrelease_x86.lib
 d:\develop\codes\vs2013\flex_working\cloth-water\lib\win32\flexextrelease_x86.exp
-d:\develop\codes\vs2013\flex_working\bin\win32\flexextrelease_x86.dll
-d:\develop\codes\vs2013\flex_working\bin\win32\flexextrelease_x86.pdb
 d:\develop\codes\vs2013\flex_working\cloth-water\bin\win32\flexextrelease_x86.dll
 d:\develop\codes\vs2013\flex_working\cloth-water\bin\win32\flexextrelease_x86.pdb
 d:\develop\codes\vs2013\flex_working\cloth-water\extensions\compiler\vc11\..\..\..\bin\win32\flexextrelease_x86.dll

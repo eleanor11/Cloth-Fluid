@@ -1,9 +1,61 @@
-﻿生成启动时间为 2015/7/30 0:30:17。
+﻿生成启动时间为 2015/9/13 23:37:02。
      1>项目“D:\develop\codes\VS2013\flex_working\cloth-water\demo\compiler\vc11\flexdemo.vcxproj”在节点 2 上(Build 个目标)。
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I..\..\.. /I..\..\..\include /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.0/include" /Zi /nologo /W3 /WX- /Ox /Oi /Oy- /GL /D _HAS_EXCEPTIONS=0 /D _CRT_SECURE_NO_WARNINGS /D WIN32 /D NDEBUG /D _CONSOLE /D _MBCS /Gm- /EHsc /MT /GS- /Gy /arch:SSE2 /fp:fast /Zc:wchar_t /Zc:forScope /Fo"Win32\Release\\" /Fd"Win32\Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt ..\..\main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I..\..\.. /I..\..\..\include /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.0/include" /Zi /nologo /W3 /WX- /Ox /Oi /Oy- /GL /D _HAS_EXCEPTIONS=0 /D _CRT_SECURE_NO_WARNINGS /D WIN32 /D NDEBUG /D _CONSOLE /D _MBCS /Gm- /EHsc /MT /GS- /Gy /arch:SSE2 /fp:fast /Zc:wchar_t /Zc:forScope /Fo"Win32\Release\\" /Fd"Win32\Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt ..\..\..\core\aabbtree.cpp ..\..\..\core\core.cpp ..\..\..\core\maths.cpp ..\..\..\core\mesh.cpp ..\..\..\core\perlin.cpp ..\..\..\core\pfm.cpp ..\..\..\core\platform.cpp ..\..\..\core\sdf.cpp ..\..\..\core\shader.cpp ..\..\..\core\tga.cpp ..\..\..\core\voxelize.cpp ..\..\imgui.cpp ..\..\imguiRenderGL.cpp ..\..\main.cpp ..\..\shaders.cpp
+         aabbtree.cpp
+         core.cpp
+         maths.cpp
+         mesh.cpp
+     1>..\..\..\core\mesh.cpp(158): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(168): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(171): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(174): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(177): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(180): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(183): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(186): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>..\..\..\core\mesh.cpp(189): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+         perlin.cpp
+         pfm.cpp
+         platform.cpp
+         sdf.cpp
+         shader.cpp
+         tga.cpp
+         voxelize.cpp
+         imgui.cpp
+         imguiRenderGL.cpp
          main.cpp
-     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1697): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1165): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1168): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1171): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1174): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1271): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1272): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1309): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1310): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1347): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(1348): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(2535): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(2538): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(2541): warning C4244: “=”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4677): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4695): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4720): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4737): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4762): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4780): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4808): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4827): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4854): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4872): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4898): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(4916): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(5764): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(5824): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(5898): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(6048): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+     1>d:\develop\codes\vs2013\flex_working\cloth-water\demo\helpers.h(6061): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+         shaders.cpp
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\..\bin\Win32\flexDemoRelease.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:..\..\..\lib\Win32 /LIBPATH:..\..\..\external\freeglut\lib /LIBPATH:..\..\..\external\glew\lib\win32 /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.0\lib\win32" flexRelease_x86.lib cuda.lib cudart.lib glew32.lib freeglut.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"..\..\..\bin\Win32\flexDemoRelease.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\..\bin\Win32\flexDemoRelease.lib" /MACHINE:X86 /SAFESEH Win32\Release\aabbtree.obj
          Win32\Release\core.obj
@@ -28,4 +80,4 @@
 
 生成成功。
 
-已用时间 00:00:03.81
+已用时间 00:00:11.70

@@ -144,6 +144,65 @@ Mesh* ImportMesh(const char* path)
 	return mesh;
 }
 
+Vec3 sortips(int a, int b, int c){
+	int tmp;
+	if (a > b){
+		tmp = a; a = b; b = tmp;
+	}
+	if (a > c){
+		tmp = a; a = c; a = tmp;
+	}
+	if (b > c){
+		tmp = b; b = c; c = tmp;
+	}
+	return Vec3(a, b, c);
+}
+void addTriangleToPoints(Mesh* mesh, int ip, int it){
+	int idx = mesh->m_pointTriangleNums[ip];
+	Vec4 tmp1 = mesh->m_pointTriangles[ip * 2];
+	Vec4 tmp2 = mesh->m_pointTriangles[ip * 2 + 1];
+
+	switch (idx)
+	{
+	case 0:
+		tmp1.w = it;
+		break;
+	case 1:
+		tmp1.x = it;
+		break;
+	case 2:
+		tmp1.y = it;
+		break;
+	case 3:
+		tmp1.z = it;
+		break;
+	case 4:
+		tmp2.w = it;
+		break;
+	case 5:
+		tmp2.x = it;
+		break;
+	case 6:
+		tmp2.y = it;
+		break;
+	case 7:
+		tmp2.z = it;
+		break;
+	default:
+		break;
+	}
+
+	mesh->m_pointTriangleNums[ip] = idx + 1;
+	mesh->m_pointTriangles[ip * 2] = tmp1;
+	mesh->m_pointTriangles[ip * 2 + 1] = tmp2;
+}
+void renewTrianglePoints(Mesh* mesh, int it, int ip0, int ip1, int ip2){
+	mesh->m_trianglePoints[it] = sortips(ip0, ip1, ip2);
+	addTriangleToPoints(mesh, ip0, it);
+	addTriangleToPoints(mesh, ip1, it);
+	addTriangleToPoints(mesh, ip2, it);
+}
+
 Mesh* ImportMeshFromPly(const char* path)
 {
     ifstream file(path, ios_base::in | ios_base::binary);
@@ -235,6 +294,12 @@ Mesh* ImportMeshFromPly(const char* path)
 
     mesh->m_indices.reserve(numFaces*3);
 
+	/*add begin*/
+	mesh->m_pointTriangleNums.resize(numVertices);
+	mesh->m_pointTriangles.resize(numVertices * 2);
+	mesh->m_trianglePoints.resize(numFaces);
+	/*add end*/
+
     // read vertices
     for (uint32_t v=0; v < numVertices; ++v)
     {
@@ -245,7 +310,15 @@ Mesh* ImportMeshFromPly(const char* path)
 
         mesh->m_positions[v] = Point3(properties[0], properties[1], properties[2]);
         mesh->m_normals[v] = Vector3(0.0f, 0.0f, 0.0f);
+
+		/*add begin*/
+		mesh->m_pointTriangleNums[v] = 0;
+		mesh->m_pointTriangles[v * 2] = Vector4(-1.0, -1.0, -1.0, -1.0);
+		mesh->m_pointTriangles[v * 2 + 1] = Vector4(-1.0, -1.0, -1.0, -1.0);
+		/*add end*/
     }
+
+	int idx = 0;
 
     // read indices
     for (uint32_t f=0; f < numFaces; ++f)
@@ -264,15 +337,30 @@ Mesh* ImportMeshFromPly(const char* path)
 			mesh->m_indices.push_back(indices[0]);
 			mesh->m_indices.push_back(indices[1]);
 			mesh->m_indices.push_back(indices[2]);
+
+			/*add begin*/
+			renewTrianglePoints(mesh, idx, indices[0], indices[1], indices[2]);
+			idx++;
+			/*add end*/
 			break;
 		case 4:
 			mesh->m_indices.push_back(indices[0]);
 			mesh->m_indices.push_back(indices[1]);
 			mesh->m_indices.push_back(indices[2]);
 
+			/*add begin*/
+			renewTrianglePoints(mesh, idx, indices[0], indices[1], indices[2]);
+			idx++;
+			/*add end*/
+
 			mesh->m_indices.push_back(indices[2]);
 			mesh->m_indices.push_back(indices[3]);
 			mesh->m_indices.push_back(indices[0]);
+
+			/*add begin*/
+			renewTrianglePoints(mesh, idx, indices[2], indices[3], indices[0]);
+			idx++;
+			/*add end*/
 			break;
 
 		default:

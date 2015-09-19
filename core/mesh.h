@@ -52,6 +52,13 @@ struct Mesh
     std::vector<Colour> m_colours;
 
     std::vector<uint32_t> m_indices;    
+
+	/*added*/
+
+	std::vector<int> m_pointTriangleNums;
+	std::vector<Vec4> m_pointTriangles;
+	std::vector<Vec3> m_trianglePoints;
+
 };
 
 // create mesh from file

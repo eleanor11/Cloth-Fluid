@@ -98,7 +98,7 @@ namespace
 	}
 }
 
-// 2D fast marching method (FMM J. Sethian. A fast marching level set method for monotonically advancing fronts. Proc. Natl. Acad. Sci., 93:1591–1595, 1996.)
+// 2D fast marching method (FMM J. Sethian. A fast marching level set method for monotonically advancing fronts. Proc. Natl. Acad. Sci., 93:1591?595, 1996.)
 namespace 
 {
 	struct Coord2D
@@ -184,7 +184,7 @@ void MakeSDF(const uint32_t* img, uint32_t w, uint32_t h, float* output)
 	}
 }
 
-// 3D fast marching method (FMM J. Sethian. A fast marching level set method for monotonically advancing fronts. Proc. Natl. Acad. Sci., 93:1591–1595, 1996.)
+// 3D fast marching method (FMM J. Sethian. A fast marching level set method for monotonically advancing fronts. Proc. Natl. Acad. Sci., 93:1591?595, 1996.)
 namespace 
 {
 	struct Coord3D

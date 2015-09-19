@@ -573,6 +573,7 @@ void DrawMesh(const Mesh* m, Vec3 color)
 	}
 }
 
+
 void DrawSky()
 {
 	static Mesh* s_sky;

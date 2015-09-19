@@ -1405,14 +1405,37 @@ public:
 	}
 };
 
-class FluidClothCoupling : public Scene
+class FluidClothCoupling : public Scene			//triangle && without thickness
 {
 public:
 
-	FluidClothCoupling(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+	FluidClothCoupling(const char* name, bool viscous, int opt = 0) : Scene(name), mViscous(viscous), option(opt) {}
 
 	void Initialize()
 	{
+		is_hollow = false;
+		is_cube = false;
+		is_complex = false;
+		is_point = false;
+
+		sceneNum = 0;
+
+		g_emitterWidth = 3;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.3;
+		g_kDiffusion = 0.3;
+		g_kDiffusionGravity = 0.2;
+
+		g_absorb = true;
+		g_diffuse = true;
+		g_drip = true;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+
 		float stretchStiffness = 1.0f;
 		float bendStiffness = 0.4f;
 		float shearStiffness = 0.4f;
@@ -1422,6 +1445,13 @@ public:
 		float radius = 0.1f;
 		float invmass = 0.25f;
 		int group = 0;
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_triangleCenters.resize(0);
+		g_triangleNeighbours.resize(0);
+		g_thetas.resize(0);
+
 
 		{
 			g_dx = dimx;
@@ -1433,7 +1463,12 @@ public:
 			int clothStart = 0;
 		
 			//CreateSpringGrid(Vec3(0.0f, 1.0f, 0.0f), dimx, dimy, 1, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
-			CreateSpringGrid(Vec3(0.3f, 1.0f, 0.0f), dimx, dimy, 1, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+			if (option == 1){
+				CreateSpringGridVertical(Vec3(0.3f, 1.0f, 0.0f), dimx, dimy, 1, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+			}
+			else {
+				CreateSpringGrid(Vec3(0.3f, 1.0f, 0.0f), dimx, dimy, 1, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+			}
 
 			int corner0 = clothStart + 0;
 			int corner1 = clothStart + dimx-1;
@@ -1444,6 +1479,27 @@ public:
 			g_positions[corner1].w = 0.0f;
 			g_positions[corner2].w = 0.0f;
 			g_positions[corner3].w = 0.0f;
+
+			if (option == 1){
+				g_positions[corner0].w = 1.0f;
+				g_positions[corner2].w = 1.0f;
+			}
+
+			if (option == 2){
+				float move = 0.05f;
+				g_positions[corner0].x = g_positions[corner0].x + move;
+				g_positions[corner0].y = g_positions[corner0].y + move;
+				g_positions[corner0].z = g_positions[corner0].z + move;
+				g_positions[corner1].x = g_positions[corner1].x - move;
+				g_positions[corner1].y = g_positions[corner1].y + move;
+				g_positions[corner1].z = g_positions[corner1].z + move;
+				g_positions[corner2].x = g_positions[corner2].x + move;
+				g_positions[corner2].y = g_positions[corner2].y + move;
+				g_positions[corner2].z = g_positions[corner2].z - move;
+				g_positions[corner3].x = g_positions[corner3].x - move;
+				g_positions[corner3].y = g_positions[corner3].y + move;
+				g_positions[corner3].z = g_positions[corner3].z - move;
+			}
 
 			// add tethers
 			for (int i=clothStart; i < int(g_positions.size()); ++i)
@@ -1459,10 +1515,16 @@ public:
 					float stiffness = -0.5f;
 					float give = 0.05f;
 
-					CreateSpring(corner0, i, stiffness, give);			
-					CreateSpring(corner1, i, stiffness, give);
-					CreateSpring(corner2, i, stiffness, give);			
-					CreateSpring(corner3, i, stiffness, give);
+					if (option == 0 || option == 2){
+						CreateSpring(corner0, i, stiffness, give);
+						CreateSpring(corner1, i, stiffness, give);
+						CreateSpring(corner2, i, stiffness, give);
+						CreateSpring(corner3, i, stiffness, give);
+					}
+					else if (option == 1){
+						CreateSpring(corner1, i, stiffness, give);
+						CreateSpring(corner3, i, stiffness, give);
+					}
 				}
 			}
 
@@ -1598,62 +1660,333 @@ public:
 
 		g_emitters.push_back(e);
 
+
 		// draw options		
 		g_drawPoints = false;
 		g_drawSprings = false;
 		g_drawEllipsoids = true;
 
-		g_kDiffusion = 0.3;
-		g_kDiffusionGravity = 0.2;
-
-		//g_absorb = true;
-		//g_diffuse = true;
-		//g_drip = true;
-
-		g_camInit = false;
-		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
-		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
 
 	}
 
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
 	bool mViscous;
+	int option;
 };
 
 class FluidClothCoupling2 : public Scene
 {
 public:
 
-	FluidClothCoupling2(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+	FluidClothCoupling2(const char* name, bool viscous, int option = 0) : Scene(name), mViscous(viscous), option(option) {}
 
 	void Initialize()
 	{
+		sceneNum = 2;
+
+		is_hollow = true;
+		is_cube = false;
+		is_complex = false;
+		is_point = false;
+
+		g_absorb = true;
+		g_diffuse = true;
+		g_drip = true;
+		g_markColor = false;
+
+		g_emitterWidth = 5;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.3;
+		g_kDiffusion = 0.3;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+
 		float stretchStiffness = 1.0f;
 		float bendStiffness = 0.4f;
 		float shearStiffness = 0.4f;
 
 		int dimx = 32;
 		int dimy = 32;
-		int dimz = 2;
+		int dimz = 6;
 		float radius = 0.1f;
 		float invmass = 0.25f;
 		int group = 0;
+
+		if (option == 1){
+			g_emitterWidth = 3;
+			dimx = 1;
+			dimy = 32;
+			dimz = 32;
+		}
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_triangleCenters.resize(0);
+		g_triangleNeighbours.resize(0);
+		g_thetas.resize(0);
+		g_pointTriangleNums.resize(dimx * dimy * dimz);
+		g_pointTriangles.resize(dimx * dimy * dimz * 2);
+		g_trianglePoints.resize(0);
 
 		{
 			g_dx = dimx;
 			g_dy = dimy;
 			g_dz = dimz;
 
-			g_numTriangles = (dimx - 1) * (dimy - 1) * dimz * 2;
+			g_numTriangles = (dimx - 1) * (dimy - 1) + (dimx - 1) * (dimz - 1) + (dimy - 1) * (dimz - 1);
+			g_numTriangles = g_numTriangles * 2 * 2;
+			g_numPoints = dimx * dimy * dimz;
 
 			int clothStart = 0;
 
 			//CreateSpringGrid(Vec3(0.0f, 1.0f, 0.0f), dimx, dimy, 1, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
 			CreateSpringGrid2(Vec3(0.3f, 1.0f, 0.0f), dimx, dimy, dimz, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
 
-			int corner0 = clothStart + 0;
-			int corner1 = clothStart + dimx - 1;
-			int corner2 = clothStart + dimx*(dimy - 1);
-			int corner3 = clothStart + dimx*dimy - 1;
+			CalculateTriangleNeighbours();
+
+			int corner0 = clothStart + 0 + (dimz - 1) * dimx * dimy;
+			int corner1 = clothStart + dimx - 1 + (dimz - 1) * dimx * dimy;
+			int corner2 = clothStart + dimx*(dimy - 1) + (dimz - 1) * dimx * dimy;
+			int corner3 = clothStart + dimx*dimy - 1 + (dimz - 1) * dimx * dimy;
+			int corner4 = clothStart + 0;
+			int corner5 = clothStart + dimx - 1;
+			int corner6 = clothStart + dimx*(dimy - 1);
+			int corner7 = clothStart + dimx*dimy - 1;
+
+			g_positions[corner0].w = 0.0f;
+			g_positions[corner1].w = 0.0f;
+			g_positions[corner2].w = 0.0f;
+			g_positions[corner3].w = 0.0f;
+			g_positions[corner4].w = 0.0f;
+			g_positions[corner5].w = 0.0f;
+			g_positions[corner6].w = 0.0f;
+			g_positions[corner7].w = 0.0f;
+
+			// add tethers
+			for (int i = clothStart; i < int(g_positions.size()); ++i)
+			{
+
+				if (i != corner0 && i != corner1 && i != corner2 && i != corner3)
+				{
+					float stiffness = -0.5f;
+					float give = 0.05f;
+
+					CreateSpring(corner0, i, stiffness, give);
+					CreateSpring(corner1, i, stiffness, give);
+					CreateSpring(corner2, i, stiffness, give);
+					CreateSpring(corner3, i, stiffness, give);
+					CreateSpring(corner4, i, stiffness, give);
+					CreateSpring(corner5, i, stiffness, give);
+					CreateSpring(corner6, i, stiffness, give);
+					CreateSpring(corner7, i, stiffness, give);
+				}
+			}
+
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			g_params.mViscosity = 50.85f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-0.25f, 1.75f, 0.5f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		if (option == 1){
+			e.mPos = Vec3(0.0f, 1.5f, 0.5f);
+		}
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+	}
+
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
+
+	bool mViscous;
+	int option = option;
+};
+class FluidClothCoupling3 : public Scene			//triangle && thickness
+{
+public:
+
+	FluidClothCoupling3(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_hollow = true;
+		is_cube = false;
+		is_complex = false;
+		is_point = false;
+
+		sceneNum = 0;
+
+		g_absorb = true;
+		g_diffuse = true;
+		g_drip = true;
+		g_markColor = false;
+
+		g_emitterWidth = 5;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.3;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+
+		float stretchStiffness = 1.0f;
+		float bendStiffness = 0.4f;
+		float shearStiffness = 0.4f;
+
+		int dimx = 32;
+		int dimy = 32;
+		int dimz = 6;
+		float radius = 0.1f;
+		float invmass = 0.25f;
+		int group = 0;
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_triangleCenters.resize(0);
+		g_triangleNeighbours.resize(0);
+		g_thetas.resize(0);
+
+
+		{
+			g_dx = dimx;
+			g_dy = dimy;
+			g_dz = dimz;
+
+			g_numTriangles = (dimx - 1) * (dimy - 1) + (dimx - 1) * (dimz - 1) + (dimy - 1) * (dimz - 1);
+			g_numTriangles = g_numTriangles * 2 * 2;
+			//g_numTriangles = 0;
+
+			int clothStart = 0;
+
+			CreateSpringGrid3(Vec3(0.3f, 1.0f, 0.0f), dimx, dimy, dimz, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+
+			int corner0 = clothStart + 0 + (dimz - 1) * dimx * dimy;
+			int corner1 = clothStart + dimx - 1 + (dimz - 1) * dimx * dimy;
+			int corner2 = clothStart + dimx*(dimy - 1) + (dimz - 1) * dimx * dimy;
+			int corner3 = clothStart + dimx*dimy - 1 + (dimz - 1) * dimx * dimy;
 
 			g_positions[corner0].w = 0.0f;
 			g_positions[corner1].w = 0.0f;
@@ -1734,9 +2067,1045 @@ public:
 		g_drawSprings = false;
 		g_drawEllipsoids = true;
 
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
+	bool mViscous;
+};
+
+class FluidClothCoupling4 : public Scene			//cube
+{
+public:
+
+	FluidClothCoupling4(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_cube = true;
+		is_point = false;
+		is_complex = false;
+		is_hollow = false;
+
+		sceneNum = 0;
+
 		g_absorb = true;
 		g_diffuse = true;
 		g_drip = true;
+		g_markColor = false;
+
+		g_emitterWidth = 3;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.2;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+
+		float stretchStiffness = 1.0f;
+		float bendStiffness = 0.4f;
+		float shearStiffness = 0.4f;
+
+		int dimx = 32;
+		int dimy = 32;
+		int dimz = 6;
+		float radius = 0.1f;
+		float invmass = 0.25f;
+		int group = 0;
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_cubeCenters.resize(0);
+		g_thetas.resize(0);
+
+
+		{
+			g_dx = dimx;
+			g_dy = dimy;
+			g_dz = dimz;
+
+			g_numTriangles = (dimx - 1) * (dimy - 1) + (dimx - 1) * (dimz - 1) + (dimy - 1) * (dimz - 1);
+			g_numTriangles = g_numTriangles * 2 * 2;
+			
+			g_numCubes = (dimx - 1) * (dimy - 1) * (dimz - 1);
+
+			int clothStart = 0;
+
+			CreateSpringGridCube(Vec3(0.3f, 1.0f, 0.0f), dimx, dimy, dimz, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+
+			int corner0 = clothStart + 0 + (dimz - 1) * dimx * dimy;
+			int corner1 = clothStart + dimx - 1 + (dimz - 1) * dimx * dimy;
+			int corner2 = clothStart + dimx*(dimy - 1) + (dimz - 1) * dimx * dimy;
+			int corner3 = clothStart + dimx*dimy - 1 + (dimz - 1) * dimx * dimy;
+
+			g_positions[corner0].w = 0.0f;
+			g_positions[corner1].w = 0.0f;
+			g_positions[corner2].w = 0.0f;
+			g_positions[corner3].w = 0.0f;
+
+			// add tethers
+			for (int i = clothStart; i < int(g_positions.size()); ++i)
+			{
+
+				if (i != corner0 && i != corner1 && i != corner2 && i != corner3)
+				{
+					float stiffness = -0.5f;
+					float give = 0.05f;
+
+					CreateSpring(corner0, i, stiffness, give);
+					CreateSpring(corner1, i, stiffness, give);
+					CreateSpring(corner2, i, stiffness, give);
+					CreateSpring(corner3, i, stiffness, give);
+				}
+			}
+
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			g_params.mViscosity = 50.85f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-0.25f, 1.75f, 0.5f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+		
+		imguiSeparatorLine();
+	}
+
+	bool mViscous;
+};
+class FluidClothCoupling5 : public Scene			
+{
+public:
+
+	FluidClothCoupling5(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_cube = false;
+		is_point = true;
+		is_complex = false;
+		is_hollow = true;
+
+		sceneNum = 0;
+
+		g_absorb = true;
+		g_diffuse = true;
+		g_drip = true;
+		g_markColor = false;
+
+		g_emitterWidth = 3;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.2;
+		g_kDiffusionGravity = 0.05;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+
+
+		float stretchStiffness = 1.0f;
+		float bendStiffness = 0.4f;
+		float shearStiffness = 0.4f;
+
+		int dimx = 32;
+		int dimy = 32;
+		int dimz = 8;
+		float radius = 0.1f;
+		float invmass = 0.25f;
+		int group = 0;
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_thetas.resize(0);
+
+		{
+			g_dx = dimx;
+			g_dy = dimy;
+			g_dz = dimz;
+
+			g_numTriangles = (dimx - 1) * (dimy - 1) + (dimx - 1) * (dimz - 1) + (dimy - 1) * (dimz - 1);
+			g_numTriangles = g_numTriangles * 2 * 2;
+
+			g_numPoints = dimx * dimy * dimz;
+
+			int clothStart = 0;
+
+			CreateSpringGridPoint(Vec3(0.2f, 1.0f, 0.0f), dimx, dimy, dimz, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+
+			int corner0 = clothStart + 0 + dimx * dimy * (dimz - 1);
+			int corner1 = clothStart + dimx - 1 + dimx * dimy * (dimz - 1);
+			int corner2 = clothStart + dimx*(dimy - 1) + dimx * dimy * (dimz - 1);
+			int corner3 = clothStart + dimx*dimy - 1 + dimx * dimy * (dimz - 1);
+
+			g_positions[corner0].w = 0.0f;
+			g_positions[corner1].w = 0.0f;
+			g_positions[corner2].w = 0.0f;
+			g_positions[corner3].w = 0.0f;
+
+			// add tethers
+			for (int i = clothStart; i < int(g_positions.size()); ++i)
+			{
+
+				if (i != corner0 && i != corner1 && i != corner2 && i != corner3)
+				{
+					float stiffness = -0.5f;
+					float give = 0.05f;
+
+					CreateSpring(corner0, i, stiffness, give);
+					CreateSpring(corner1, i, stiffness, give);
+					CreateSpring(corner2, i, stiffness, give);
+					CreateSpring(corner3, i, stiffness, give);
+				}
+			}
+
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			g_params.mViscosity = 50.85f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-0.25f, 1.75f, 0.5f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
+	bool mViscous;
+};
+class FluidClothCoupling6 : public Scene			//cube
+{
+public:
+
+	FluidClothCoupling6(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_cube = false;
+		is_point = true;
+		is_complex = false;
+		is_hollow = false;
+
+		sceneNum = 0;
+
+		g_absorb = true;
+		g_diffuse = true;
+		g_drip = true;
+		g_markColor = false;
+
+		g_emitterWidth = 3;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.2;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(0.7f, 1.7f, 2.9f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+
+		float stretchStiffness = 1.0f;
+		float bendStiffness = 0.4f;
+		float shearStiffness = 0.4f;
+
+		int dimx = 32;
+		int dimy = 32;
+		int dimz = 8;
+		float radius = 0.1f;
+		float invmass = 0.25f;
+		int group = 0;
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_thetas.resize(0);
+
+
+		{
+			g_dx = dimx;
+			g_dy = dimy;
+			g_dz = dimz;
+
+			g_numTriangles = (dimx - 1) * (dimy - 1) + (dimx - 1) * (dimz - 1) + (dimy - 1) * (dimz - 1);
+			g_numTriangles = g_numTriangles * 2 * 2;
+
+			g_numPoints = dimx * dimy * dimz;
+
+			int clothStart = 0;
+
+			CreateSpringGridPoint(Vec3(0.2f, 1.0f, 0.0f), dimx, dimy, dimz, radius*0.25f, flexMakePhase(group++, 0), stretchStiffness, bendStiffness, shearStiffness, Vec3(0.0f), invmass);
+
+			int corner0 = clothStart + 0 + (dimz - 1) * dimx * dimy;
+			int corner1 = clothStart + dimx - 1 + (dimz - 1) * dimx * dimy;
+			int corner2 = clothStart + dimx*(dimy - 1) + (dimz - 1) * dimx * dimy;
+			int corner3 = clothStart + dimx*dimy - 1 + (dimz - 1) * dimx * dimy;
+
+			g_positions[corner0].w = 0.0f;
+			g_positions[corner1].w = 0.0f;
+			g_positions[corner2].w = 0.0f;
+			g_positions[corner3].w = 0.0f;
+
+			// add tethers
+			for (int i = clothStart; i < int(g_positions.size()); ++i)
+			{
+
+				if (i != corner0 && i != corner1 && i != corner2 && i != corner3)
+				{
+					float stiffness = -0.5f;
+					float give = 0.05f;
+
+					CreateSpring(corner0, i, stiffness, give);
+					CreateSpring(corner1, i, stiffness, give);
+					CreateSpring(corner2, i, stiffness, give);
+					CreateSpring(corner3, i, stiffness, give);
+				}
+			}
+
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			g_params.mViscosity = 50.85f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-0.25f, 1.75f, 0.5f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
+	bool mViscous;
+};
+
+class FluidObjectHollow : public Scene			//cube
+{
+public:
+
+	FluidObjectHollow(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_cube = false;
+		is_point = false;
+		is_complex = true;
+		is_hollow = false;
+
+		sceneNum = 0;
+
+		g_absorb = true;
+		g_diffuse = true;
+		g_drip = true;
+		g_markColor = false;
+
+		g_emitterWidth = 5;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.2;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(-0.5f, 1.5f, 2.5f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+		float radius = 0.1f;
+
+		g_positions.resize(0);
+		g_normals.resize(0);
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_triangleCenters.resize(0);
+		g_triangleNeighbours.resize(0);
+		g_thetas.resize(0);
+
+		g_pointTriangleNums.resize(0);
+		g_pointTriangles.resize(0);
+		g_trianglePoints.resize(0);
+
+		if (g_mesh)
+			delete g_mesh;
+		{
+
+			float shapeSize = 1.0f;
+			CreateSDF2("../../data/bunny.ply", shapeSize, Vec3(-shapeSize*0.5f, 0.0f, -shapeSize*0.5f), g_params.mCollisionDistance*0.125f);
+
+			Vec3 lower, upper;
+			g_mesh->GetBounds(lower, upper);
+
+			CalculateTriangleNeighbours();
+
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			//g_params.mViscosity = 50.85f;
+			g_params.mViscosity = 100.0f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-1.0f, 1.75f, 0.0f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
+	bool mViscous;
+};
+class FluidObjectHollow2 : public Scene			//cube
+{
+public:
+
+	FluidObjectHollow2(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_cube = false;
+		is_point = false;
+		is_complex = true;
+		is_hollow = false;
+
+		sceneNum = 0;
+
+		g_absorb = false;
+		g_diffuse = false;
+		g_drip = false;
+		g_markColor = false;
+
+		g_emitterWidth = 10;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.2;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(-0.5f, 1.5f, 2.5f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+		float radius = 0.1f;
+
+		g_positions.resize(0);
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_triangleCenters.resize(0);
+		g_triangleNeighbours.resize(0);
+		g_thetas.resize(0);
+
+		g_pointTriangleNums.resize(0);
+		g_pointTriangles.resize(0);
+		g_trianglePoints.resize(0);
+
+
+		{
+
+			float shapeSize = 0.5f;
+			CreateSDF2("../../data/armadillo.ply", shapeSize, Vec3(-shapeSize*0.5f, 0.0f, -shapeSize*0.5f), g_params.mCollisionDistance*0.125f);
+
+			Vec3 lower, upper;
+			g_mesh->GetBounds(lower, upper);
+
+			CalculateTriangleNeighbours();
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			g_params.mViscosity = 50.85f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-1.0f, 1.75f, 0.0f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
+	}
+
+	bool mViscous;
+};
+
+class FluidObjectSolid : public Scene			//cube
+{
+public:
+
+	FluidObjectSolid(const char* name, bool viscous) : Scene(name), mViscous(viscous) {}
+
+	void Initialize()
+	{
+		is_cube = false;
+		is_point = false;
+		is_complex = true;
+		is_hollow = false;
+
+		sceneNum = 0;
+
+		g_absorb = false;
+		g_diffuse = false;
+		g_drip = false;
+		g_markColor = false;
+
+		g_emitterWidth = 5;
+
+		g_kAbsorption = 1.0;
+		g_kMaxAbsorption = 0.5;
+		g_kDiffusion = 0.2;
+		g_kDiffusionGravity = 0.2;
+
+		g_camInit = false;
+		g_camPos = Vec3(-0.5f, 1.5f, 2.5f);
+		g_camAngle = Vec3(0.0f, -0.4f, 0.0f);
+
+		float radius = 0.1f;
+
+		g_positions.resize(0);
+
+		g_dripBuffer.resize(0);
+		g_saturations.resize(0);
+		g_triangleCenters.resize(0);
+		g_triangleNeighbours.resize(0);
+		g_thetas.resize(0);
+
+		g_pointTriangleNums.resize(0);
+		g_pointTriangles.resize(0);
+		g_trianglePoints.resize(0);
+
+
+		{
+
+			float shapeSize = 1.0f;
+
+			int phase = flexMakePhase(0, eFlexPhaseSelfCollide); 
+			float spacing = g_params.mRadius * 0.4f;
+
+			CreateParticleShape2("../../data/bunny.ply", Vec3(-shapeSize*0.5f, 0.0f, -shapeSize*0.5f), shapeSize, 0.0f, spacing, Vec3(0.0f, 0.0f, 0.0f), 0.0f, true, 1.f, phase, true, 0.0f);
+
+
+			CalculateTriangleNeighbours();
+
+		}
+
+		g_numSolidParticles = g_positions.size();
+		g_ior = 1.0f;
+
+		g_numExtraParticles = 64 * 1024;
+
+		g_params.mRadius = radius;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		//g_params.mNumIterations = 6;
+
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
+
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
+
+		// for viscous goo
+		if (mViscous)
+		{
+			g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
+
+			g_params.mDynamicFriction = 0.3f;
+			g_params.mCohesion = 0.025f;
+			//g_params.mViscosity = 50.85f;
+			g_params.mViscosity = 100.0f;
+		}
+		else
+		{
+			g_params.mDynamicFriction = 0.125f;
+			g_params.mViscosity = 0.1f;
+			g_params.mCohesion = 0.0035f;
+			g_params.mViscosity = 4.0f;
+		}
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-1.0f, 1.75f, 0.0f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
+
+		// draw options		
+		g_drawPoints = false;
+		g_drawSprings = false;
+		g_drawEllipsoids = true;
+
+	}
+	virtual void DoGui(){
+
+		imguiLabel("Scene");
+
+		if (imguiCheck("Dyeing", bool(g_absorb != 0 && g_diffuse != 0 && g_drip != 0))){
+			if (g_absorb && g_diffuse && g_drip){
+				g_absorb = false;
+				g_diffuse = false;
+				g_drip = false;
+			}
+			else {
+				g_absorb = true;
+				g_diffuse = true;
+				g_drip = true;
+			}
+		}
+
+		if (imguiCheck("Absorbing", bool(g_absorb != 0)))
+			g_absorb = !g_absorb;
+		if (imguiCheck("Diffusing", bool(g_diffuse != 0)))
+			g_diffuse = !g_diffuse;
+		if (imguiCheck("Dripping", bool(g_drip != 0)))
+			g_drip = !g_drip;
+		if (imguiCheck("Mark", bool(g_markColor != 0)))
+			g_markColor = !g_markColor;
+
+		imguiSlider("k Absorption", &g_kAbsorption, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion", &g_kDiffusion, 0.0, 1.0, 0.1);
+		imguiSlider("k Diffusion Gravity", &g_kDiffusionGravity, 0.0, 1.0, 0.1);
+
+		imguiSeparatorLine();
 	}
 
 	bool mViscous;
@@ -2935,9 +4304,9 @@ public:
 		float minSize = 0.75f;
 		float maxSize = 1.0f;
 
-		// convex rocks
-		for (int i=0; i < 5; i++)
-			CreateRandomConvex(10, Vec3(i*2.0f, 0.0f, Randf(0.0f, 2.0f)), minSize, maxSize, Vec3(0.0f, 1.0f, 0.0f), Randf(0.0f, k2Pi));
+		//// convex rocks
+		//for (int i=0; i < 5; i++)
+		//	CreateRandomConvex(10, Vec3(i*2.0f, 0.0f, Randf(0.0f, 2.0f)), minSize, maxSize, Vec3(0.0f, 1.0f, 0.0f), Randf(0.0f, k2Pi));
 		
 		float radius = 0.12f;
 		int group = 0;
@@ -2950,39 +4319,84 @@ public:
 
 		mPressure = 1.0f;
 
-		for (int y=0; y < 2; ++y)
-		{
-			for (int i=0; i < 4; ++i)
-			{
-				Mesh* mesh = ImportMesh(meshes[(i+y)&1]);
-				mesh->Normalize();
-				mesh->Transform(TranslationMatrix(Point3(i*2.0f, 1.0f + y*2.0f, 1.5f)));
+		//for (int y=0; y < 2; ++y)
+		//{
+		//	for (int i=0; i < 4; ++i)
+		//	{
+		//		Mesh* mesh = ImportMesh(meshes[(i+y)&1]);
+		//		mesh->Normalize();
+		//		mesh->Transform(TranslationMatrix(Point3(i*2.0f, 1.0f + y*2.0f, 1.5f)));
+		//		AddInflatable(mesh, mPressure, flexMakePhase(group++, 0));
+		//		delete mesh;
+		//	}
+		//}
 
-				AddInflatable(mesh, mPressure, flexMakePhase(group++, 0));
+		Mesh* mesh = ImportMesh(meshes[0]);
+		mesh->Normalize();
+		mesh->Transform(TranslationMatrix(Point3(0.0, 1.0, 0.0)));
 
-				delete mesh;
-			}
-		}
+		AddInflatable(mesh, mPressure, flexMakePhase(group++, 0));
 
-		g_numExtraParticles = 20000;
-		
+		delete mesh;
+
+		//g_numExtraParticles = 20000;
+		//
+		//g_params.mRadius = radius;
+		//g_params.mDynamicFriction = 0.4f;
+		//g_params.mDissipation = 0.0f;
+		//g_params.mNumIterations = 10;
+		//g_params.mParticleCollisionMargin = g_params.mRadius*0.05f;
+		//g_params.mDrag = 0.0f;
+		//g_params.mCollisionDistance = 0.01f;
+
+		//// better convergence with global relaxation factor
+		//g_params.mRelaxationMode = eFlexRelaxationGlobal;
+		//g_params.mRelaxationFactor = 0.25f;
+
+		//g_windStrength = 0.0f;
+
+		//g_numSubsteps = 2;
+
+		//mSplitThreshold.resize(mCloths.size(), 45.0f);
+
+
+		g_numExtraParticles = 64 * 1024;
+
 		g_params.mRadius = radius;
-		g_params.mDynamicFriction = 0.4f;
-		g_params.mDissipation = 0.0f;
-		g_params.mNumIterations = 10;
-		g_params.mParticleCollisionMargin = g_params.mRadius*0.05f;
-		g_params.mDrag = 0.0f;
-		g_params.mCollisionDistance = 0.01f;
+		g_params.mFluid = true;
+		g_params.mNumIterations = 5;
+		g_params.mVorticityConfinement = 0.0f;
+		g_params.mAnisotropyScale = 30.0f;
+		g_params.mFluidRestDistance = g_params.mRadius*0.5f;
+		g_params.mSmoothing = 0.5f;
+		g_params.mSolidPressure = 0.25f;
+		g_numSubsteps = 3;
+		g_params.mNumIterations = 6;
 
-		// better convergence with global relaxation factor
-		g_params.mRelaxationMode = eFlexRelaxationGlobal;
-		g_params.mRelaxationFactor = 0.25f;
+		g_params.mMaxVelocity = 0.5f*g_numSubsteps*g_params.mRadius / g_dt;
 
-		g_windStrength = 0.0f;
+		g_maxDiffuseParticles = 32 * 1024;
+		g_diffuseScale = 0.5f;
+		g_lightDistance = 3.0f;
+		g_pointScale = 0.5f;
 
-		g_numSubsteps = 2;
+		g_fluidColor = Vec4(0.0f, 0.8f, 0.2f, 1.0f);
 
-		mSplitThreshold.resize(mCloths.size(), 45.0f);
+//		g_params.mDynamicFriction = 0.3f;
+		g_params.mCohesion = 0.025f;
+		g_params.mViscosity = 50.85f;
+		
+
+		g_emitters[0].mEnabled = false;
+
+		Emitter e;
+		e.mDir = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+		e.mEnabled = true;
+		e.mPos = Vec3(-0.25f, 1.75f, 0.5f);
+		e.mRight = Cross(e.mDir, Vec3(0.0f, 0.0f, 1.0f));
+		e.mSpeed = (g_params.mFluidRestDistance / (g_dt*2.0f));
+
+		g_emitters.push_back(e);
 
 		// draw options		
 		g_drawPoints = false;
@@ -2997,6 +4411,9 @@ public:
 
 	virtual void DoGui()
 	{
+
+		imguiLabel("Scene");
+
 		if (imguiSlider("Over Pressure", &mPressure, 0.25f, 3.0f, 0.001f))
 		{
 			for (int i=0; i < int(mOverPressure.size()); ++i)
@@ -3004,6 +4421,9 @@ public:
 
 			flexSetInflatables(g_flex, &mTriOffset[0], &mTriCount[0], &mRestVolume[0], &mOverPressure[0], &mConstraintScale[0], mCloths.size(), eFlexMemoryHost);
 		}
+
+
+		imguiSeparatorLine();
 	}
 	
 	virtual void Draw(int pass)
